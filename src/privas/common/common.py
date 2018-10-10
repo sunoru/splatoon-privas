@@ -34,6 +34,7 @@ class CommonPriva(BasePriva):
 
     def _to_dict(self):
         return {
+            'name': self.Meta.name,
             'status': self.status,
             'logs': self.logs,
             'battles': self.battles,
@@ -53,14 +54,14 @@ class CommonPriva(BasePriva):
 
     def add_log(self, *info):
         time = datetime.datetime.now().strftime(CommonPriva.DATETIME_FMT)
-        log = (time, *info)
+        log = [time, *info]
         self.logs.append(log)
         return log
 
     def rules(self, language='en'):
         """Return the rule descriptions that are stored in a markdown file.
         If the language not supported it will choose the closest one."""
-        path = os.path.join(PKG_PATH, self.__class__.Meta.pkg_name, "rules*.md")
+        path = os.path.join(PKG_PATH, self.Meta.pkg_name, "rules*.md")
         rule_files = glob.glob(path)
         rule_files.sort(key=lambda x: len(x))
         if len(rule_files) == 0:
@@ -129,13 +130,16 @@ class CommonPriva(BasePriva):
         a, b, p = set(team_a), set(team_b), set(self.active_players())
         return len(a.intersection(b)) == 0 and p.issuperset(a) and p.issuperset(b) and len(p - a - b) <= 2
 
-    def start_battle(self, team_a, team_b):
+    def _match_players(self, team_a, team_b):
         if self.status < 0:
             raise PrivaError(3, 'The Priva is not started or is already over.')
         if self.in_battle:
             raise PrivaError(2, 'The Priva is already in a battle.')
-        if self.Meta.min_players > 0 and len(self.players) < self.Meta.min_players:
+        if self.Meta.min_players > 0 and len(self.active_players()) < self.Meta.min_players:
             raise PrivaError(1, 'Players not enough.')
+        return team_a, team_b
+
+    def _start_battle(self, team_a, team_b):
         if not self._check_valid_battle(team_a, team_b):
             raise PrivaError(4, 'Invalid player combination.')
         self.status += 1
@@ -147,10 +151,16 @@ class CommonPriva(BasePriva):
             'team_b': team_b,
             'result': None
         }
+        byes = []
         for player in self.active_players():
             if player not in team_a and player not in team_b:
                 self.players[player]['byes'] += 1
-        return self.add_log('battle', 'start', n, team_a, team_b)
+                byes.append(player)
+        return self.add_log('battle', 'start', n, team_a, team_b, byes)
+
+    def start_battle(self, team_a=None, team_b=None):
+        team_a, team_b = self._match_players(team_a, team_b)
+        return self._start_battle(team_a, team_b)
 
     def end_battle(self, result):
         if self.status <= 0 or not self.in_battle:
@@ -236,7 +246,7 @@ class CommonPriva(BasePriva):
     def report(self):
         """Return current information of the Priva"""
         results = {
-            'name': self.__class__.Meta.name,
+            'name': self.Meta.name,
             'status': self.status,
             'in_battle': self.in_battle,
             'standings': self.standings(),
@@ -255,5 +265,5 @@ class CommonPriva(BasePriva):
 
     def __str__(self):
         return '<%s %s, %d Players, %d Battles>' % (
-            self.__class__.Meta.name, self.status, len(self.players), len(self.battles)
+            self.Meta.name, self.status, len(self.players), len(self.battles)
         )

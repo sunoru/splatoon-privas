@@ -1,2 +1,3 @@
-Example descriptions of a rule for private battles. If specific language code isn't found, this file would be the
-default one.
+## Common Priva.
+
+Nothing special but a common private battle room which will log your battles.
