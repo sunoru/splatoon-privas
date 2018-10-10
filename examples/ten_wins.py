@@ -1,5 +1,5 @@
 import json
-from privas.ten_wins import TenWinsPriva
+from privas.n_wins import TenWinsPriva
 
 priva = TenWinsPriva()
 priva.start()

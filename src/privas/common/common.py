@@ -22,6 +22,7 @@ class CommonPriva(BasePriva):
             'zh_CN': '普通'
         }
         pkg_name = 'common'
+        type_name = 'common'
         min_players = 0
 
     def _from_dict(self, data):
@@ -153,7 +154,7 @@ class CommonPriva(BasePriva):
             'num': n,
             'team_a': team_a,
             'team_b': team_b,
-            'result': None
+            'winner': None
         }
         byes = []
         for player in self.active_players():
@@ -166,21 +167,24 @@ class CommonPriva(BasePriva):
         team_a, team_b = self._match_players(team_a, team_b)
         return self._start_battle(team_a, team_b)
 
-    def end_battle(self, result):
+    def end_battle(self, winner):
         if self.status <= 0 or not self.in_battle:
             raise PrivaError(3, 'The Priva is not in a battle.')
+        winner = winner.lower()
+        if winner not in {'a', 'b'}:
+            raise PrivaError(1, '`winner` should be "a" or "b".')
         n = self.status
         battle = self.battles[n]
-        battle['result'] = result
+        battle['winner'] = winner
         self.in_battle = False
         win, lose = battle['team_a'], battle['team_b']
-        if not result:
+        if winner == 'b':
             win, lose = lose, win
         for player in win:
             self.players[player]['wins'] += 1
         for player in lose:
             self.players[player]['loses'] += 1
-        return self.add_log('battle', 'end', n, result)
+        return self.add_log('battle', 'end', n, winner)
 
     def _undo_action(self, action):
         if action[1] == 'players':
@@ -208,11 +212,11 @@ class CommonPriva(BasePriva):
                         self.players[player]['byes'] -= 1
             elif action[2] == 'end':
                 battle = self.battles[action[3]]
-                result = action[4]
-                battle['result'] = None
+                winner = action[4]
+                battle['winner'] = None
                 self.in_battle = True
                 win, lose = battle['team_a'], battle['team_b']
-                if not result:
+                if winner == 'b':
                     win, lose = lose, win
                 for player in win:
                     self.players[player]['wins'] -= 1
