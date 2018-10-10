@@ -3,7 +3,7 @@ import os
 PKG_PATH = os.path.abspath(os.path.dirname(__file__))
 
 
-class PrivaError(BaseException):
+class PrivaError(Exception):
     def __init__(self, code, message):
         super().__init__(code, message)
 
