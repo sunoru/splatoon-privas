@@ -11,11 +11,10 @@ class PrivaRPC:
     priva_pool = {}
     n = 0
 
-    def create_priva(self, typename, jsondata=None):
+    def create_priva(self, typename, *args, **kwargs):
         if typename not in Privas:
             raise NotImplementedError()
-        kwargs = {} if jsondata is None else json.loads(jsondata)
-        priva = Privas[typename](**kwargs)
+        priva = Privas[typename](*args, **kwargs)
         pid = self.n
         self.n += 1
         self.priva_pool[pid] = priva
@@ -27,7 +26,7 @@ class PrivaRPC:
         del self.priva_pool[pid]
         return True
 
-    def run_action(self, pid, action, jsondata=None):
+    def run_action(self, pid, action, *args, **kwargs):
         pid = int(pid)
         if pid not in self.priva_pool:
             raise Exception(1, 'Invalid priva ID')
@@ -35,9 +34,8 @@ class PrivaRPC:
         action_func = getattr(priva, action)
         if action_func is None:
             raise Exception(2, 'Invalid action name')
-        kwargs = {} if jsondata is None else json.loads(jsondata)
         try:
-            return action_func(**kwargs)
+            return action_func(*args, **kwargs)
         except PrivaError as e:
             raise e
 
