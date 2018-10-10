@@ -6,7 +6,10 @@ from privas.common import CommonPriva
 
 class TenWinsPriva(CommonPriva):
     class Meta:
-        name = 'Ten-Wins'
+        names = {
+            'en': 'Ten-Wins',
+            'zh_CN': '十胜'
+        }
         pkg_name = 'ten_wins'
         min_players = 8
 

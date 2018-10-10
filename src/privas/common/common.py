@@ -2,7 +2,10 @@ import datetime
 import glob
 import json
 import os
+import re
+
 from privas.bases import BasePriva, PKG_PATH, PrivaError
+from privas.utils import find_language
 
 
 class CommonPriva(BasePriva):
@@ -14,7 +17,10 @@ class CommonPriva(BasePriva):
 
     class Meta:
         """Class for meta information of a Priva."""
-        name = 'Common'
+        names = {
+            'en': 'Common',
+            'zh_CN': '普通'
+        }
         pkg_name = 'common'
         min_players = 0
 
@@ -34,7 +40,7 @@ class CommonPriva(BasePriva):
 
     def _to_dict(self):
         return {
-            'name': self.Meta.name,
+            'name': self.Meta.pkg_name,
             'status': self.status,
             'logs': self.logs,
             'battles': self.battles,
@@ -46,6 +52,7 @@ class CommonPriva(BasePriva):
         return json.dumps(self._to_dict(), **kwargs)
 
     def __init__(self):
+        super().__init__()
         self.status = -1
         self.logs = []
         self.battles = {}
@@ -58,23 +65,20 @@ class CommonPriva(BasePriva):
         self.logs.append(log)
         return log
 
-    def rules(self, language='en'):
+    @classmethod
+    def rules(cls, language='en'):
         """Return the rule descriptions that are stored in a markdown file.
         If the language not supported it will choose the closest one."""
-        path = os.path.join(PKG_PATH, self.Meta.pkg_name, "rules*.md")
+        path = os.path.join(PKG_PATH, cls.Meta.pkg_name, "rules*.md")
         rule_files = glob.glob(path)
         rule_files.sort(key=lambda x: len(x))
         if len(rule_files) == 0:
             return
-        tmp = list(filter(lambda x: x.lower().endswith("%s.md" % language.lower()), rule_files))
-        if tmp:
-            filename = tmp[0]
-        else:
-            tmp = list(filter(lambda x: x.lower().find("rules-%s" % language.lower()) >= 0, rule_files))
-            if tmp:
-                filename = tmp[0]
-            else:
-                filename = rule_files[0]
+        i = max(find_language(
+            list(''.join(re.split(r'rules|-|\.md', os.path.basename(x))) for x in rule_files),
+            language
+        )[0], 0)
+        filename = rule_files[i]
         with open(filename, encoding='utf-8') as fi:
             return fi.read()
 
@@ -243,10 +247,10 @@ class CommonPriva(BasePriva):
         except StopIteration:
             return None
 
-    def report(self):
+    def report(self, language='en'):
         """Return current information of the Priva"""
         results = {
-            'name': self.Meta.name,
+            'name': self.Meta.names[find_language(list(self.Meta.names.keys()), language)[1]],
             'status': self.status,
             'in_battle': self.in_battle,
             'standings': self.standings(),
@@ -265,5 +269,5 @@ class CommonPriva(BasePriva):
 
     def __str__(self):
         return '<%s %s, %d Players, %d Battles>' % (
-            self.Meta.name, self.status, len(self.players), len(self.battles)
+            self.Meta.names['en'], self.status, len(self.players), len(self.battles)
         )

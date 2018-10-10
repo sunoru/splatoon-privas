@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import json
 import sys
 
 import zerorpc
@@ -10,6 +9,21 @@ from privas import Privas, PrivaError
 class PrivaRPC:
     priva_pool = {}
     n = 0
+
+    @staticmethod
+    def list_priva_types():
+        return {
+            x: Privas[x].Meta.names
+            for x in Privas.keys()
+        }
+
+    def list_privas(self):
+        return {pid: str(self.priva_pool[pid]) for pid in self.priva_pool}
+
+    def show_rules(self, typename, language='en'):
+        if typename not in Privas:
+            raise NotImplementedError()
+        return Privas[typename].rules(language)
 
     def create_priva(self, typename, *args, **kwargs):
         if typename not in Privas:

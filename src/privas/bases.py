@@ -14,9 +14,10 @@ class PrivaError(Exception):
 class BasePriva:
     """Base class for Priva (private battles)."""
 
-    def rules(self):
+    @classmethod
+    def rules(cls, language='en'):
         """Return descriptions of the rules."""
-        return 'No rules for %s' % self.__class__.__name__
+        return 'No rules for %s' % cls.__name__
 
     def start(self, *args, **kwargs):
         """Start the Priva."""

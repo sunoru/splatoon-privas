@@ -4,7 +4,7 @@ from privas.ten_wins import TenWinsPriva
 
 __priva_classes = [CommonPriva, TenWinsPriva]
 Privas = {
-    cls.Meta.name: cls
+    cls.Meta.pkg_name: cls
     for cls in __priva_classes
 }
 
