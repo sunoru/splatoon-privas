@@ -7,7 +7,7 @@ from privas.common import CommonPriva
 class NWinsPriva(CommonPriva):
     class Meta:
         names = {
-            'en': 'NWins',
+            'en': 'N-Wins',
             'zh_CN': 'n胜'
         }
         pkg_name = 'n_wins'

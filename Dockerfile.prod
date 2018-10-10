@@ -7,5 +7,6 @@ RUN apk add --no-cache --virtual=build-dependencies python3-dev gcc zeromq-dev l
     && pip install zerorpc \
     && apk del build-dependencies
 
-VOLUME [ "/code" ]
-WORKDIR /code
+COPY . /code
+
+CMD [ "python", "/code/src/start_rpc.py" ]
