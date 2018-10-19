@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import uuid
 
 import zerorpc
 
@@ -8,12 +9,17 @@ from privas import Privas, PrivaError
 
 class PrivaRPC:
     priva_pool = {}
-    n = 0
 
     @staticmethod
     def list_priva_types():
         return {
-            x: Privas[x].Meta.names
+            x: {
+                'names': Privas[x].Meta.names,
+                'args': [
+                    (arg, Privas[x].__init__.__annotations__.get(arg, str).__name__)
+                    for arg in Privas[x].__init__.__code__.co_varnames[1:]
+                ]
+            }
             for x in Privas.keys()
         }
 
@@ -29,8 +35,7 @@ class PrivaRPC:
         if typename not in Privas:
             raise NotImplementedError()
         priva = Privas[typename](*args, **kwargs)
-        pid = self.n
-        self.n += 1
+        pid = str(uuid.uuid1())
         self.priva_pool[pid] = priva
         return pid
 
@@ -41,17 +46,28 @@ class PrivaRPC:
         return True
 
     def run_action(self, pid, action, *args, **kwargs):
-        pid = int(pid)
         if pid not in self.priva_pool:
-            raise Exception(1, 'Invalid priva ID')
+            raise Exception(-2, 'Invalid priva ID')
         priva = self.priva_pool[pid]
         action_func = getattr(priva, action)
         if action_func is None:
-            raise Exception(2, 'Invalid action name')
-        try:
-            return action_func(*args, **kwargs)
-        except PrivaError as e:
-            raise e
+            raise Exception(-3, 'Invalid action name')
+        if 'no_return' in kwargs:
+            action_func(*args, **kwargs)
+            return True
+        return action_func(*args, **kwargs)
+    
+
+    def restore_priva(self, typename, pid, json_data):
+        if typename not in Privas:
+            raise NotImplementedError()
+        priva_class = Privas[typename]
+        action_func = getattr(priva_class, 'from_json')
+        if action_func is None:
+            raise NotImplementedError()
+        priva = action_func(json_data)
+        self.priva_pool[pid] = priva
+        return pid
 
 
 def main():

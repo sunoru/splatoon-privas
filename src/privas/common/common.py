@@ -28,20 +28,24 @@ class CommonPriva(BasePriva):
     def _from_dict(self, data):
         self.status = data['status']
         self.logs = data['logs']
-        self.battles = data['battles']
+        self.battles = {
+            int(x): data['battles'][x]
+            for x in data['battles']
+        }
         self.players = data['players']
         self.in_battle = data['in_battle']
 
     @classmethod
     def from_json(cls, json_data):
-        x = cls()
         data = json.loads(json_data)
+        x = cls(*data['args'])
         x._from_dict(data)
         return x
 
     def _to_dict(self):
         return {
             'name': self.Meta.pkg_name,
+            'args': self.args,
             'status': self.status,
             'logs': self.logs,
             'battles': self.battles,
@@ -59,6 +63,7 @@ class CommonPriva(BasePriva):
         self.battles = {}
         self.players = {}
         self.in_battle = False
+        self.args = []
 
     def add_log(self, *info):
         time = datetime.datetime.now().strftime(CommonPriva.DATETIME_FMT)
@@ -100,15 +105,15 @@ class CommonPriva(BasePriva):
     def add_players(self, players):
         """Add a list of players."""
         if self.in_battle:
-            raise PrivaError(2, 'The Private is during a battle.')
+            raise PrivaError(2, 'The Priva is during a battle.')
         new_players = []
         for player in players:
             if player not in self.players:
                 new_players.append(player)
             elif self.players[player]['active']:
-                raise PrivaError(1, '%s is already in this Private.' % player)
+                raise PrivaError(3, '%s is already in this Priva.' % player)
         if len(new_players) + len(self.active_players()) > 10:
-            raise PrivaError(3, 'Too many (>10) players.')
+            raise PrivaError(4, 'Too many (>10) players.')
         for player in new_players:
             self.players[player] = {
                 'name': player,
@@ -126,7 +131,7 @@ class CommonPriva(BasePriva):
             raise PrivaError(2, 'The Priva is during a battle.')
         for player in players:
             if player not in self.players or not self.players[player]['active']:
-                raise PrivaError(1, '%s is already removed or has not been added.' % player)
+                raise PrivaError(5, '%s is not in this Priva.' % player)
         for player in players:
             self.players[player]['active'] = False
         return self.add_log('players', 'remove', players)
@@ -137,16 +142,16 @@ class CommonPriva(BasePriva):
 
     def _match_players(self, team_a, team_b):
         if self.status < 0:
-            raise PrivaError(3, 'The Priva is not started or is already over.')
+            raise PrivaError(6, 'The Priva is not started or already ended.')
         if self.in_battle:
             raise PrivaError(2, 'The Priva is already in a battle.')
         if self.Meta.min_players > 0 and len(self.active_players()) < self.Meta.min_players:
-            raise PrivaError(1, 'Players not enough.')
+            raise PrivaError(7, 'Players not enough.')
         return team_a, team_b
 
     def _start_battle(self, team_a, team_b):
         if not self._check_valid_battle(team_a, team_b):
-            raise PrivaError(4, 'Invalid player combination.')
+            raise PrivaError(8, 'Invalid player combination.')
         self.status += 1
         self.in_battle = True
         n = self.status
@@ -169,10 +174,10 @@ class CommonPriva(BasePriva):
 
     def end_battle(self, winner):
         if self.status <= 0 or not self.in_battle:
-            raise PrivaError(3, 'The Priva is not in a battle.')
+            raise PrivaError(9, 'The Priva is not in a battle.')
         winner = winner.lower()
         if winner not in {'a', 'b'}:
-            raise PrivaError(1, '`winner` should be "a" or "b".')
+            raise PrivaError(10, '`winner` should be "a" or "b".')
         n = self.status
         battle = self.battles[n]
         battle['winner'] = winner
@@ -227,7 +232,7 @@ class CommonPriva(BasePriva):
     def undo(self):
         """Undo the last action in logs."""
         if len(self.logs) < 1:
-            raise PrivaError(1, 'No action to undo.')
+            raise PrivaError(11, 'No action to undo.')
         action = self.logs.pop()
         return self._undo_action(action)
 
@@ -239,7 +244,7 @@ class CommonPriva(BasePriva):
         if player_names is None:
             player_names = self.players.keys()
         players = list(self.players[player] for player in player_names)
-        players.sort(key=lambda x: (-x['wins'], -x['byes'], x['loses']))
+        players.sort(key=lambda x: (-x['wins'], x['loses']))
         return players
 
     def _first_in_logs(self, *args, reverse=False):
@@ -258,6 +263,7 @@ class CommonPriva(BasePriva):
             'status': self.status,
             'in_battle': self.in_battle,
             'standings': self.standings(),
+            'args': self.args
         }
         results['recent_battle'] = battle = self.battles[self.status] if self.status > 0 else None
         if battle is not None:
